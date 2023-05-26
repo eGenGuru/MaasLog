@@ -3,14 +3,15 @@ using System;
 using Confluent.Kafka;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
-
+using System.Text.Json.Serialization;
+using System.Net;
 namespace MaasLog
 {
-    public class Logger: ILogger
+    public class Logger : ILogger
     {
         private readonly string _name;
         private readonly Func<MaasConfiguration> _getCurrentConfig;
-        private readonly IProducer<Null, string > _producer;
+        private readonly IProducer<Null, string> _producer;
         private readonly ConcurrentQueue<LogMessage> _logQueue;
         private readonly Task _loggingTask;
         private readonly TaskCompletionSource<object> _stopSignal;
@@ -19,11 +20,7 @@ namespace MaasLog
             Func<MaasConfiguration> getCurrentConfig)
         {
             (_name, _getCurrentConfig) = (name, getCurrentConfig);
-            var config = new ProducerConfig
-            {
-                BootstrapServers = _getCurrentConfig().BootstrapServers,
-            };
-            _producer = new ProducerBuilder<Null, string>(config).Build();
+            _producer = new ProducerBuilder<Null, string>(getCurrentConfig().config).Build();
             _logQueue = new ConcurrentQueue<LogMessage>();
             _stopSignal = new TaskCompletionSource<object>();
             _loggingTask = Task.Run(LogMessages);
@@ -56,11 +53,11 @@ namespace MaasLog
                     while (_logQueue.TryDequeue(out var message))
                     {
 
-                            var dr = 
-                                await _producer.ProduceAsync(
-                                    _getCurrentConfig().TopicName, 
-                                    new Message<Null, string> { Value = "test" });
-             
+                        var dr =
+                            await _producer.ProduceAsync(
+                                _getCurrentConfig().TopicName,
+                                new Message<Null, string> { Value = "test" });
+
                     }
                 }
 
@@ -80,6 +77,18 @@ namespace MaasLog
 
         private class LogMessage
         {
+
+            [JsonPropertyName("agent_timestamp")]
+            public string AgentTimestamp { get; set; } = DateTime.UtcNow.ToString("u").Replace(" ", "T");
+            [JsonPropertyName("agent_hostname")]
+            public string AgentHostname { get; set; } = Dns.GetHostName();
+            [JsonPropertyName("agent_source")]
+            public string AgentSource { get; set; } = "undefined";
+            [JsonPropertyName("agent_offset")]
+            public string AgentOffset { get; set; } = TimeZoneInfo.Utc.GetUtcOffset(DateTime.Now).ToString();
+            [JsonPropertyName("metadata_account_id")]
+            public string MetadataAccountId { get; set; } = "";
+
             public LogLevel LogLevel { get; }
             public string Message { get; }
             public Exception Exception { get; }

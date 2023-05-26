@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 
 namespace MaasLog;
@@ -6,6 +7,6 @@ namespace MaasLog;
 public class MaasConfiguration
 {
     public LogLevel LogLevel { get; set; }
-    public string BootstrapServers;
     public string TopicName;
+    public ProducerConfig config;
 }
