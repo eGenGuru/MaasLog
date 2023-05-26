@@ -10,7 +10,7 @@ namespace MaasLog
     {
         private readonly string _name;
         private readonly Func<MaasConfiguration> _getCurrentConfig;
-        private IProducer<Null, string > _producer;
+        private readonly IProducer<Null, string > _producer;
         private readonly ConcurrentQueue<LogMessage> _logQueue;
         private readonly Task _loggingTask;
         private readonly TaskCompletionSource<object> _stopSignal;
@@ -34,7 +34,8 @@ namespace MaasLog
         {
             if (IsEnabled(logLevel))
             {
-                string message = $"{formatter(state, exception)}";
+                var message = new LogMessage(logLevel, $"{formatter(state, exception)}", exception);
+                _logQueue.Enqueue(message);
             }
         }
 
@@ -74,6 +75,21 @@ namespace MaasLog
         {
             _stopSignal.TrySetResult(null);
             await _loggingTask;
+        }
+
+
+        private class LogMessage
+        {
+            public LogLevel LogLevel { get; }
+            public string Message { get; }
+            public Exception Exception { get; }
+
+            public LogMessage(LogLevel logLevel, string message, Exception exception)
+            {
+                LogLevel = logLevel;
+                Message = message;
+                Exception = exception;
+            }
         }
     }
 }
